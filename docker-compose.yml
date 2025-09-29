@@ -1,0 +1,198 @@
+services:
+  gateway:
+    image: gateway
+    container_name: gateway
+    env_file:
+      - .env
+      - .env.gateway
+    build:
+      context: api/gateway
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+        - ft_transcendence
+    depends_on:
+      users:
+        condition: service_healthy
+      tournament:
+        condition: service_healthy
+      matchmaking:
+        condition: service_healthy
+      game:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      users-status:
+        condition: service_healthy
+    volumes:
+        - ./api/auth/database:/app/database/auth
+        - ./api/users/database:/app/database/users
+    restart: unless-stopped
+  users:
+    image: users
+    container_name: users
+    build:
+      context: api/users/
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ft_transcendence
+    volumes:
+      - users-data:/app/database/users
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  tournament:
+    image: tournament
+    env_file:
+      - .env
+    container_name: tournament
+    build:
+      context: api/tournament
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8081/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ft_transcendence
+    restart: on-failure
+
+  game:
+    image: game
+    container_name: game
+    build:
+      context: api/game
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8082/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ft_transcendence
+    restart: on-failure
+
+  ai:
+    image: ai
+    container_name: ai
+    build:
+      context: api/ai
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8085/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ft_transcendence
+    restart: on-failure
+
+  matchmaking:
+    image: matchmaking
+    env_file:
+      - .env
+    container_name: matchmaking
+    build:
+      context: api/matchmaking
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8083/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ft_transcendence
+    volumes:
+      - ./api/users/database:/app/database/users
+    restart: on-failure
+
+  auth:
+    image: auth
+    container_name: auth
+    env_file:
+      - .env
+      - .env.gateway
+      - .env.auth
+    build:
+      context: api/auth
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8084/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      - users
+    networks:
+      - ft_transcendence
+    volumes:
+      - auth-data:/app/database/auth
+      - ./api/users/database:/app/database/users
+    restart: on-failure
+
+  users-status:
+    image: users-status
+    env_file:
+      - .env
+    container_name: users-status
+    build:
+      context: api/users-status
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8086/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ft_transcendence
+    volumes:
+      - ./api/users/database:/app/database/users
+    restart: on-failure
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    build:
+      context: api/nginx
+    volumes:
+      - ./uploads:/usr/share/nginx/front/uploads
+      - ./certs:/etc/nginx/ssl
+    ports:
+      - "8443:443"
+      - "8080:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      - ft_transcendence
+    restart: on-failure
+
+networks:
+  ft_transcendence:
+    driver: bridge
+
+volumes:
+  users-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./api/users/database
+  auth-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./api/auth/database
