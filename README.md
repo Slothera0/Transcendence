@@ -40,7 +40,7 @@ Sauvegarde l'état de connexion de tous les utilisateurs en fonction de si ils s
 
 ## Users
 
-Stocke tous les informations des utilisateurs dans une base de donnée et posséde un systéme de lite d'amis entre les utilisateurs.
+Stocke tous les informations des utilisateurs dans une base de donnée et posséde un systeme de liste d'amis entre les utilisateurs.
 
 
 
